@@ -43,6 +43,7 @@ def preprocess(ticker, dataframe):
     stock_data = stock_data.rename(columns={'closing_price': 'y', 'date': 'ds'})
     stock_data.loc[stock_data['y'] == 0, 'y'] = stock_data.loc[:, 
                                                                'yesterdays_closing_price'].shift(periods = -1)
+    
     if ticker in ['SQURPHARMA', 'SINGERBD']:
         stock_data_slice = stock_data.loc[stock_data['ds'] < '2011-12-01']
         stock_data_slice[[
@@ -69,7 +70,8 @@ def boxCoxTransformation(ticker, dataframe):
     stock_data = preprocess(ticker, dataframe)      
     stock_data_box = stock_data.loc[:, ['ds', 'y']]
     stock_data_box['y'], box_lam = boxcox(stock_data_box['y'])
-    return stock_data_box, box_lam,
+    return stock_data_box, box_lam
+
 
 def model(ticker, dataframe=read_data('/content/drive/My Drive/DseDataSet'),  
              start_date='2008-01-01', end_date='2018-12-31', growth='linear', changepoints=None, n_changepoints=25, 
