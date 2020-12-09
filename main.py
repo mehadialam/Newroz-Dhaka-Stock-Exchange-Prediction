@@ -31,7 +31,7 @@ def getAllTicker(dataFrame = readData('/content/drive/My Drive/DseDataSet'), sta
   '''
   return dataFrame.loc[(dataFrame['date'] >= start_date) & (dataFrame['date'] <= end_date)].trading_code.unique()
 
-def preprocess(ticker, dataFrame = readData('/content/drive/My Drive/DseDataSet')):
+def preprocess(ticker, dataFrame):
   ''' 
   If any stoke data face value other than 10TK then make it 10 taka. 
   this function will return stock_data = face value 10taka stock data.
@@ -61,7 +61,7 @@ def preprocess(ticker, dataFrame = readData('/content/drive/My Drive/DseDataSet'
   
   return stock_data
 
-def boxCoxTransformation(ticker, dataFrame = readData('/content/drive/My Drive/DseDataSet')):
+def boxCoxTransformation(ticker, dataFrame):
   '''
   this function will return stock_data_box = box normalization of stock data, 
   box_lam = lamda value for box.
