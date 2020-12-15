@@ -168,3 +168,96 @@ def visualstockdata(stock_data):
     fig.add_trace(go.Scatter(x=stock_data['ds'], y=stock_data['y'],
                   name='Equity'))
     fig.show()
+
+
+def find_best_params(
+    ticker,
+    dataframe=read_data('/content/drive/My Drive/DseDataSet'),
+    start_date='2008-01-01',
+    end_date='2018-12-31',
+    initial='3200 days',
+    period='30 days',
+    horizon='361 days',
+    base_error='rmse',
+    parallel=None,
+    **param_dict
+    ):
+
+    (stock_data_box, box_lam) = boxCoxTransformation(ticker, dataframe)
+
+    param_iter = itertools.product(*param_dict.values())
+    params = []
+    for param in param_iter:
+        params.append(param)
+    params_df = pd.DataFrame(params, columns=list(param_dict.keys()))
+
+    metrics = [
+        'horizon',
+        'mse',
+        'rmse',
+        'mae',
+        'mape',
+        'mdape',
+        'coverage',
+        'params',
+        ]
+    results = []
+
+    for param in params_df.values:
+        param_dict = dict(zip(params_df.keys(), param))
+        m = Prophet(daily_seasonality=False, weekly_seasonality=False,
+                    **param_dict)
+        m.add_seasonality(name='monthly', period=30.5, fourier_order=15)
+        m.fit(stock_data_box.loc[(stock_data_box['ds'] >= start_date)
+              & (stock_data_box['ds'] <= end_date)])
+
+        df_cv = cross_validation(m, initial=initial, period=period,
+                                 horizon=horizon, parallel=parallel)
+        df_p = performance_metrics(df_cv, rolling_window=1)
+        df_p['params'] = str(param_dict)
+        df_p = df_p.loc[:, metrics]
+        results.append(df_p)
+    results_df = pd.concat(results).reset_index(drop=True)
+    best_param = results_df.loc[results_df[base_error]
+                                == min(results_df[base_error]),
+                                ['params']]
+
+    pd.set_option('display.max_colwidth', 1)
+    return eval(best_param.values[0][0])
+
+
+def predict(
+    ticker,
+    dataframe=read_data('/content/drive/My Drive/DseDataSet'),
+    start_date='2008-01-01',
+    end_date='2018-12-31',
+    initial='3200 days',
+    period='30 days',
+    horizon='361 days',
+    prediction_start_date='2019-01-01',
+    prediction_end_date='2019-12-31',
+    base_error='rmse',
+    parallel=None,
+    **param_dict
+    ):
+
+    best_params = find_best_params(
+        ticker=ticker,
+        start_date=start_date,
+        end_date=end_date,
+        initial=initial,
+        period=period,
+        horizon=horizon,
+        base_error=base_error,
+        parallel=parallel,
+        **param_dict
+        )
+    data = model(ticker=ticker,
+                 dataframe=read_data('/content/drive/My Drive/DseDataSet'
+                 ), start_date='2008-01-01', end_date='2018-12-31',
+                 **best_params)
+    prediction = data['prediction']
+    prediction.rename(columns={'yhat': 'Predicted_Closing_Price',
+                      'ds': 'Date'}, inplace=True)
+    return prediction.loc[(prediction['Date'] >= prediction_start_date)
+                          & (prediction['Date'] <= prediction_end_date)]
