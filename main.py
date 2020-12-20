@@ -221,8 +221,6 @@ def find_best_params(
     best_param = results_df.loc[results_df[base_error]
                                 == min(results_df[base_error]),
                                 ['params']]
-
-    pd.set_option('display.max_colwidth', 1)
     return eval(best_param.values[0][0])
 
 
