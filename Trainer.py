@@ -650,5 +650,5 @@ def trainer(
             # ticker_list_trained.append(ticker)
 
             with open('trained_model.json', 'w+') as trainedfile:
-                json.dump(ticker_list_trained, trainedfile)
+                json.dump(models_params_trained, trainedfile)
     pass
