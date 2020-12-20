@@ -651,4 +651,4 @@ def trainer(
 
             with open('trained_model.json', 'w+') as trainedfile:
                 json.dump(models_params_trained, trainedfile)
-    pass
+  
