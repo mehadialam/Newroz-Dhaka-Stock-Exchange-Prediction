@@ -1,10 +1,8 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-
-import plotly.offline as pyoff
-import plotly.graph_objs as go
-from plotly.subplots import make_subplots
 
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
@@ -22,7 +20,6 @@ import itertools
 from main import find_best_params
 from main import get_all_ticker
 from main import read_data
-
 df = read_data('/content/drive/My Drive/DseDataSet')
 
 
@@ -36,13 +33,12 @@ def trainer(
     parallel=None,
     cutoffs=None,
     base_error='rmse',
-    daily_seasonality=False,
-    weekly_seasonality=False,
     **param_dict
     ):
 
     try:
-        with open('trained_model.json', 'r') as trainedfile:
+        with open('/content/drive/MyDrive/Colab Notebooks/trained_model.json'
+                  , 'r') as trainedfile:
             models_params_trained = json.load(trainedfile)
             ticker_list_trained = list(model_params_trained.keys())
     except:
@@ -91,6 +87,8 @@ def trainer(
             'BANGAS',
             'BANKASIA',
             'BARKAPOWER',
+            'BATASHOE',
+            'BATBC',
             'BAYLEASING',
             'BBS',
             'BBSCABLES',
@@ -150,6 +148,7 @@ def trainer(
             'DSHGARME',
             'DSSL',
             'DULAMIACOT',
+            'DUTCHBANGL',
             'EASTERNINS',
             'EASTLAND',
             'EASTRNLUB',
@@ -377,11 +376,13 @@ def trainer(
             'SPCERAMICS',
             'SPCL',
             'SQUARETEXT',
+            'SQURPHARMA',
             'SSSTEEL',
             'STANCERAM',
             'STANDARINS',
             'STANDBANKL',
             'STYLECRAFT',
+            'SUMITPOWER',
             'SUNLIFEINS',
             'T05Y0715',
             'T05Y0815',
@@ -635,20 +636,22 @@ def trainer(
         ticker_list_untrained = list(set(get_all_ticker())
                 - set(ticker_list_trained))
         for ticker in ticker_list_untrained:
+            print ('Running hyper-parameter optimization for:', ticker)
             models_params_trained[ticker] = find_best_params(
                 ticker=ticker,
+                dataframe=dataframe,
                 start_date=start_date,
                 end_date=end_date,
+                horizon=horizon,
                 initial=initial,
                 period=period,
-                horizon=horizon,
-                base_error=base_error,
                 parallel=parallel,
+                cutoffs=cutoffs,
+                base_error=base_error,
                 **param_dict
                 )
-
-            # ticker_list_trained.append(ticker)
-
-            with open('trained_model.json', 'w+') as trainedfile:
+            with open('/content/drive/MyDrive/Colab Notebooks/trained_model.json'
+                      , 'w+') as trainedfile:
                 json.dump(models_params_trained, trainedfile)
-  
+            print ('Successfully hyper-parameter optimization for:',
+                   ticker)
