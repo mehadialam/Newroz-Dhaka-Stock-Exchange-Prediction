@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
@@ -14,13 +13,120 @@ from fbprophet.diagnostics import performance_metrics
 from fbprophet.plot import plot_cross_validation_metric
 
 import json
-
 import itertools
+import copy
 
-from main import find_best_params
 from main import get_all_ticker
 from main import read_data
+from main import boxCoxTransformation
+
 df = read_data('/content/drive/My Drive/DseDataSet')
+
+
+def hyperparameter_combinations(**param_dict):
+
+    # Generate all combinations of parameters
+
+    all_params = [dict(zip(param_dict.keys(), v)) for v in
+                  itertools.product(*param_dict.values())]
+    return all_params
+
+
+def crossvalidation_hyperparams(
+    ticker,
+    dataframe=df,
+    start_date='2008-01-01',
+    end_date='2018-12-31',
+    horizon='361 days',
+    initial=None,
+    period=None,
+    parallel=None,
+    cutoffs=None,
+    **param_dict
+    ):
+
+    (stock_data_box, box_lam) = boxCoxTransformation(ticker, dataframe)
+    metrics = [
+        'horizon',
+        'mse',
+        'rmse',
+        'mae',
+        'mape',
+        'mdape',
+        'coverage',
+        ]
+    try:
+        with open('/content/drive/MyDrive/Colab Notebooks/Hyperparameter Tuning/'
+                   + ticker + '_hyperparameters.json', 'r') as file:
+            hyperparams = json.load(file)
+            params_checked = hyperparams['checked']
+            params_unchecked = hyperparams['unchecked']
+            params_combinations = \
+                hyperparameter_combinations(**param_dict)
+            params_unchecked = params_unchecked + [i for i in
+                    params_combinations if i not in params_unchecked]
+            params_unchecked = [i for i in params_unchecked if i
+                                not in params_checked]
+            params_combinations_list = copy.deepcopy(params_unchecked)
+            results = pd.DataFrame.from_dict(hyperparams['results'])
+    except:
+        params_checked = []
+        params_combinations_list = \
+            hyperparameter_combinations(**param_dict)
+        params_unchecked = copy.deepcopy(params_combinations_list)
+        results = pd.DataFrame()  # []
+    for params in params_combinations_list:
+        params_unchecked.remove(params)
+        try:
+            monthly_seasonality_order = \
+                params['monthly_seasonality_order']
+            params_copy.pop('monthly_seasonality_order')
+        except:
+            monthly_seasonality_order = 5
+
+        m = Prophet(**params)
+        m.add_seasonality(name='monthly', period=30.5,
+                          fourier_order=monthly_seasonality_order)
+        m.fit(stock_data_box.loc[(stock_data_box['ds'] >= start_date)
+              & (stock_data_box['ds'] <= end_date)])  # Fit model with given params
+
+        df_cv = cross_validation(
+            m,
+            horizon=horizon,
+            initial=initial,
+            period=period,
+            parallel=parallel,
+            cutoffs=cutoffs,
+            )
+        df_p = performance_metrics(df_cv, rolling_window=1)
+        df_p = df_p.loc[:, metrics]
+        df_p['params'] = str(params)
+        df_p['horizon'] = df_p['horizon'].astype(str)
+        results = results.append(df_p, ignore_index=True, sort=False)
+        results = results.to_dict()
+        params_checked.append(params)
+        hyperparams = {'results': results, 'checked': params_checked,
+                       'unchecked': params_unchecked}
+        with open('/content/drive/MyDrive/Colab Notebooks/Hyperparameter Tuning/'
+                   + ticker + '_hyperparameters.json', 'w+') as file:
+            json.dump(hyperparams, file)
+        results = pd.DataFrame.from_dict(results)
+    return results
+
+
+def best_params(ticker, base_error='rmse'):
+    try:
+        with open('/content/drive/MyDrive/Colab Notebooks/Hyperparameter Tuning/'
+                   + ticker + '_hyperparameters.json', 'r') as file:
+            hyperparams = json.load(file)
+            tuning_results = \
+                pd.DataFrame.from_dict(hyperparams['results'])
+    except:
+        print 'No hyperparameter tuning file found under this ticker'
+    best_param = tuning_results.loc[tuning_results[base_error]
+                                    == min(tuning_results[base_error]),
+                                    ['params']]
+    return eval(best_param.values[0][0])
 
 
 def trainer(
@@ -637,7 +743,7 @@ def trainer(
                 - set(ticker_list_trained))
         for ticker in ticker_list_untrained:
             print ('Running hyper-parameter optimization for:', ticker)
-            models_params_trained[ticker] = find_best_params(
+            crossvalidation_hyperparams(
                 ticker=ticker,
                 dataframe=dataframe,
                 start_date=start_date,
@@ -647,11 +753,13 @@ def trainer(
                 period=period,
                 parallel=parallel,
                 cutoffs=cutoffs,
-                base_error=base_error,
                 **param_dict
                 )
+            models_params_trained[ticker] = best_params(ticker=ticker,
+                    base_error=base_error)
+
+            # ticker_list_trained.append(ticker)
+
             with open('/content/drive/MyDrive/Colab Notebooks/trained_model.json'
                       , 'w+') as trainedfile:
                 json.dump(models_params_trained, trainedfile)
-            print ('Successfully hyper-parameter optimization for:',
-                   ticker)
