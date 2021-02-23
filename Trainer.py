@@ -1,37 +1,39 @@
 # -*- coding: utf-8 -*-
 import pandas as pd
 import numpy as np
+ 
 import matplotlib.pyplot as plt
-
+ 
 from scipy.stats import boxcox
 from scipy.special import inv_boxcox
-
+ 
 from fbprophet import Prophet
 from fbprophet.plot import add_changepoints_to_plot
 from fbprophet.diagnostics import cross_validation
 from fbprophet.diagnostics import performance_metrics
 from fbprophet.plot import plot_cross_validation_metric
-
+ 
 import json
 import itertools
 import copy
-
+ 
+# from main import find_best_params
+ 
 from main import get_all_ticker
 from main import read_data
 from main import boxCoxTransformation
-
 df = read_data('/content/drive/My Drive/DseDataSet')
-
-
+ 
+ 
 def hyperparameter_combinations(**param_dict):
-
+ 
     # Generate all combinations of parameters
-
+ 
     all_params = [dict(zip(param_dict.keys(), v)) for v in
                   itertools.product(*param_dict.values())]
     return all_params
-
-
+ 
+ 
 def crossvalidation_hyperparams(
     ticker,
     dataframe=df,
@@ -44,7 +46,7 @@ def crossvalidation_hyperparams(
     cutoffs=None,
     **param_dict
     ):
-
+ 
     (stock_data_box, box_lam) = boxCoxTransformation(ticker, dataframe)
     metrics = [
         'horizon',
@@ -83,13 +85,13 @@ def crossvalidation_hyperparams(
             params_copy.pop('monthly_seasonality_order')
         except:
             monthly_seasonality_order = 5
-
+ 
         m = Prophet(**params)
         m.add_seasonality(name='monthly', period=30.5,
                           fourier_order=monthly_seasonality_order)
         m.fit(stock_data_box.loc[(stock_data_box['ds'] >= start_date)
               & (stock_data_box['ds'] <= end_date)])  # Fit model with given params
-
+ 
         df_cv = cross_validation(
             m,
             horizon=horizon,
@@ -112,8 +114,8 @@ def crossvalidation_hyperparams(
             json.dump(hyperparams, file)
         results = pd.DataFrame.from_dict(results)
     return results
-
-
+ 
+ 
 def best_params(ticker, base_error='rmse'):
     try:
         with open('/content/drive/MyDrive/Colab Notebooks/Hyperparameter Tuning/'
@@ -122,13 +124,13 @@ def best_params(ticker, base_error='rmse'):
             tuning_results = \
                 pd.DataFrame.from_dict(hyperparams['results'])
     except:
-        print 'No hyperparameter tuning file found under this ticker'
+        print('No hyperparameter tuning file found under this ticker')
     best_param = tuning_results.loc[tuning_results[base_error]
                                     == min(tuning_results[base_error]),
                                     ['params']]
     return eval(best_param.values[0][0])
-
-
+ 
+ 
 def trainer(
     dataframe=df,
     start_date='2008-01-01',
@@ -141,9 +143,9 @@ def trainer(
     base_error='rmse',
     **param_dict
     ):
-
+ 
     try:
-        with open('/content/drive/MyDrive/Colab Notebooks/trained_model.json'
+        with open('/content/drive/MyDrive/Colab Notebooks/trained_modeldel.json'
                   , 'r') as trainedfile:
             models_params_trained = json.load(trainedfile)
             ticker_list_trained = list(model_params_trained.keys())
@@ -225,7 +227,7 @@ def trainer(
             'CAPMIBBLMF',
             'CENTRALINS',
             'CENTRALPHL',
-            'CITYBANK',
+            'CITYBANK',#
             'CITYGENINS',
             'CNATEX',
             'CONFIDCEM',
@@ -315,7 +317,7 @@ def trainer(
             'ICBEPMF1S1',
             'ICBIBANK',
             'ICBSONALI1',
-            'IDLC',
+            #'IDLC',#
             'IFADAUTOS',
             'IFIC',
             'IFIC1STMF',
@@ -374,7 +376,7 @@ def trainer(
             'MPETROLEUM',
             'MTB',
             'NAHEEACP',
-            'NATLIFEINS',
+            #'NATLIFEINS',#
             'NAVANACNG',
             'NBL',
             'NCCBANK',
@@ -392,7 +394,7 @@ def trainer(
             'NURANI',
             'OAL',
             'OIMEX',
-            'OLYMPIC',
+            #'OLYMPIC',#
             'ONEBANKLTD',
             'ORIONINFU',
             'ORIONPHARM',
@@ -438,7 +440,7 @@ def trainer(
             'REGENTTEX',
             'RELIANCE1',
             'RELIANCINS',
-            'RENATA',
+            #'RENATA',#
             'RENWICKJA',
             'REPUBLIC',
             'RINGSHINE',
@@ -473,6 +475,7 @@ def trainer(
             'SILCOPHL',
             'SILVAPHL',
             'SIMTEX',
+            #'SINGERBD'#,
             'SINOBANGLA',
             'SKTRIMS',
             'SONALIANSH',
@@ -482,7 +485,7 @@ def trainer(
             'SPCERAMICS',
             'SPCL',
             'SQUARETEXT',
-            'SQURPHARMA',
+            #'SQURPHARMA',#
             'SSSTEEL',
             'STANCERAM',
             'STANDARINS',
@@ -713,7 +716,7 @@ def trainer(
             'T5Y1215',
             'TAKAFULINS',
             'TALLUSPIN',
-            'TITASGAS',
+            #'TITASGAS',#
             'TOSRIFA',
             'TRUSTB1MF',
             'TRUSTBANK',
@@ -757,9 +760,9 @@ def trainer(
                 )
             models_params_trained[ticker] = best_params(ticker=ticker,
                     base_error=base_error)
-
+ 
             # ticker_list_trained.append(ticker)
-
+ 
             with open('/content/drive/MyDrive/Colab Notebooks/trained_model.json'
                       , 'w+') as trainedfile:
                 json.dump(models_params_trained, trainedfile)
